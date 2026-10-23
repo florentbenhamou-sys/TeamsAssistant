@@ -21,6 +21,7 @@ from teams_assistant.transcription.types import (
     TranscriptionCancelled,
     TranscriptionError,
     TranscriptionOptions,
+    WordStamp,
 )
 
 log = get_logger("transcription.whisper")
@@ -105,4 +106,5 @@ class FasterWhisperEngine:
             yield RawSegment(start_s=start, end_s=end, text=seg.text.strip(),
                              avg_logprob=float(seg.avg_logprob),
                              no_speech_prob=float(seg.no_speech_prob),
-                             compression_ratio=float(seg.compression_ratio))
+                             compression_ratio=float(seg.compression_ratio),
+                             words=tuple(WordStamp(float(w.start), float(w.end), str(w.word)) for w in words))

@@ -21,6 +21,9 @@ class AppSettings:
     language: str = "fr"  # "auto" = détection
     separate_sources: bool = True
     compute_device: str = "cpu"
+    diarize_speakers: bool = True  # distinguer les voix (aucune empreinte vocale conservée)
+    speakers_main: int = 0  # voix sur le son du PC / fichier importé, 0 = estimation automatique
+    speakers_mic: int = 1  # voix au micro, 1 = vous seul (casque)
     # Compte rendu
     summary_generator: str = "local"  # local | claude
     cloud_ai_enabled: bool = False  # aucun envoi cloud tant que non activé explicitement

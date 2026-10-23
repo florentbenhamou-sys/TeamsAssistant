@@ -16,7 +16,8 @@ entreprises, où le transcript officiel n'est pas accessible.
 1. **Capture** du son de la réunion diffusé par le PC (WASAPI loopback) et, en option, du micro, dans
    des fichiers séparés — ou **import** d'un fichier audio/vidéo existant.
 2. **Transcription locale** en français avec faster-whisper (aucun envoi d'audio), horodatée, par
-   tronçons avec reprise, passages douteux signalés.
+   tronçons avec reprise, passages douteux signalés, **voix distinguées** (Intervenant 1, 2… à
+   renommer ; aucune empreinte vocale conservée).
 3. **Compte rendu structuré** (décisions, questions, risques, engagements, actions…) : générateur local
    sans IA par défaut, IA cloud Claude en option explicite.
 4. **Correction, validation, export** (TXT, Markdown, JSON, DOCX), **historique** avec recherche,
@@ -68,9 +69,9 @@ scripts\diag.ps1 record --seconds 5 --tone    # test de capture avec bip
 
 ```powershell
 $py = "$env:LOCALAPPDATA\TeamsAssistant\venv\Scripts\python.exe"
-& $py -m pytest              # 61 tests automatisés (sans matériel ni réseau)
+& $py -m pytest              # 71 tests automatisés (sans matériel ni réseau)
 & $py -m pytest -m hardware  # capture réelle (joue un bip discret)
-& $py -m pytest -m model     # transcription réelle de l'échantillon (modèle small)
+& $py -m pytest -m model     # transcription et séparation des voix réelles sur les échantillons
 & $py -m mypy src            # typage strict
 ```
 
@@ -81,6 +82,7 @@ $py = "$env:LOCALAPPDATA\TeamsAssistant\venv\Scripts\python.exe"
 - [`docs/audio-diagnostic.md`](docs/audio-diagnostic.md) — capture, mesures réelles, dépannage
 - [`docs/microsoft-graph.md`](docs/microsoft-graph.md) — inscription Entra ID, permissions, limites
 - [`docs/compte-rendu.md`](docs/compte-rendu.md) — modèle de compte rendu, générateurs, coûts
+- [`docs/separation-des-voix.md`](docs/separation-des-voix.md) — distinguer et renommer les voix, mesures, limites
 - [`docs/test-protocol.md`](docs/test-protocol.md) — protocole de test manuel
 - [`samples/meeting_demo/`](samples/meeting_demo/) — réunion **synthétique** (voix de synthèse,
   sociétés fictives) avec vérité terrain, transcription et compte rendu d'exemple

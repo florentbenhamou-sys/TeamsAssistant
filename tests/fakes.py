@@ -97,6 +97,20 @@ class FakeSpeechEngine:
         return DetectedLanguage(options.language or self.language, 0.99), iter(raws)
 
 
+class FakeDiarizer:
+    """Séparateur factice : voix 1 avant `switch_s`, voix 2 après ; mémorise les appels."""
+
+    def __init__(self, switch_s: float = 2.0) -> None:
+        self.switch_s = switch_s
+        self.calls: list[tuple[int, int]] = []
+
+    def assign(self, samples: Any, spans: Any, num_speakers: int = 0, progress: Any = None) -> list[int]:
+        self.calls.append((len(spans), num_speakers))
+        if progress:
+            progress(1.0)
+        return [1 if start < self.switch_s else 2 for start, _end in spans]
+
+
 def write_wav(path: Any, samples: Any, rate: int = 16000) -> None:
     import wave
     with wave.open(str(path), "wb") as wav:

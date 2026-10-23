@@ -25,7 +25,8 @@ if (-not (Test-Path "$VenvPath\Scripts\python.exe")) {
 }
 $venvPy = "$VenvPath\Scripts\python.exe"
 & $venvPy -m pip install --upgrade pip
-& $venvPy -m pip install -e "$ProjectRoot[$Extras]"
+# --prefer-binary : sherpa-onnx publie parfois une version source avant ses wheels Windows
+& $venvPy -m pip install --prefer-binary -e "$ProjectRoot[$Extras]"
 if ($LASTEXITCODE -ne 0) { Write-Host "Échec de l'installation des dépendances." -ForegroundColor Red; exit 1 }
 
 Write-Host ""

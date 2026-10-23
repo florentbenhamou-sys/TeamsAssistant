@@ -26,6 +26,7 @@ from teams_assistant.settings import AppSettings
 from teams_assistant.summary.claude_generator import API_KEY_SECRET
 from teams_assistant.transcription.whisper_engine import PROFILES
 from teams_assistant.ui.controller import Controller
+from teams_assistant.ui.pages.transcript import count_spin
 from teams_assistant.ui.widgets import button, confirm, error_box, info_box, muted, title
 from teams_assistant.ui.workers import run_async
 
@@ -43,6 +44,9 @@ class SettingsPage(QWidget):
         self.language = QComboBox()
         self.separate = QCheckBox("Transcrire micro et son du PC séparément (recommandé avec un casque)")
         self.device = QComboBox()
+        self.diarize = QCheckBox("Distinguer les voix (Intervenant 1, 2…) — aucune empreinte vocale conservée")
+        self.speakers_main = count_spin(0)
+        self.speakers_mic = count_spin(1)
         self.cloud_enabled = QCheckBox("Autoriser l'IA cloud (Claude) — désactivé par défaut")
         self.cloud_model = QLineEdit()
         self.api_key = QLineEdit()
@@ -100,9 +104,12 @@ class SettingsPage(QWidget):
     def _transcription(self) -> QGroupBox:
         return self._group("Moteur de transcription (faster-whisper, local)", [
             ("Modèle / profil", self.profile), ("Langue", self.language), ("", self.separate),
-            ("Calcul", self.device),
-            ("", muted("Les modèles sont téléchargés une fois depuis Hugging Face (gratuit), puis utilisés "
-                       "hors connexion."))])
+            ("Calcul", self.device), ("", self.diarize),
+            ("Voix sur le son du PC / fichier", self.speakers_main), ("Voix au micro", self.speakers_mic),
+            ("", muted("Indiquer le nombre de personnes améliore nettement la séparation des voix ; « auto » "
+                       "a tendance à en compter trop (renommez deux libellés à l'identique pour les fusionner).")),
+            ("", muted("Les modèles sont téléchargés une fois (Hugging Face et GitHub sherpa-onnx, gratuits), "
+                       "puis utilisés hors connexion."))])
 
     def _ai(self) -> QGroupBox:
         save_key, forget_key = button("Enregistrer la clé"), button("Oublier la clé")
@@ -155,6 +162,9 @@ class SettingsPage(QWidget):
         self.language.setCurrentIndex(max(0, self.language.findData(s.language)))
         self.separate.setChecked(s.separate_sources)
         self.device.setCurrentIndex(max(0, self.device.findData(s.compute_device)))
+        self.diarize.setChecked(s.diarize_speakers)
+        self.speakers_main.setValue(s.speakers_main)
+        self.speakers_mic.setValue(s.speakers_mic)
         self.cloud_enabled.setChecked(s.cloud_ai_enabled)
         self.cloud_model.setText(s.cloud_model)
         self.client_id.setText(s.graph_client_id)
@@ -194,6 +204,8 @@ class SettingsPage(QWidget):
         s.record_microphone = self.record_mic.isChecked()
         s.transcription_profile, s.language = self.profile.currentData(), self.language.currentData()
         s.separate_sources, s.compute_device = self.separate.isChecked(), self.device.currentData()
+        s.diarize_speakers = self.diarize.isChecked()
+        s.speakers_main, s.speakers_mic = self.speakers_main.value(), self.speakers_mic.value()
         s.cloud_ai_enabled, s.cloud_model = self.cloud_enabled.isChecked(), self.cloud_model.text().strip()
         s.summary_generator = "claude" if s.cloud_ai_enabled else "local"
         s.graph_client_id, s.graph_tenant = self.client_id.text().strip(), self.tenant.text().strip() or "organizations"

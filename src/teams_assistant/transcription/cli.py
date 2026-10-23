@@ -12,6 +12,7 @@ import time
 from pathlib import Path
 
 from teams_assistant.config import AppPaths
+from teams_assistant.transcription.diarization import EmbeddingDiarizer, ensure_model
 from teams_assistant.transcription.pipeline import TranscriptionPipeline
 from teams_assistant.transcription.types import (
     AudioSource,
@@ -51,13 +52,19 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--profile", choices=list(PROFILES), default="rapide")
     parser.add_argument("--language", default="fr", help="code langue, ou 'auto'")
     parser.add_argument("--device", default="cpu", choices=["cpu", "cuda"])
+    parser.add_argument("--diarize", action="store_true", help="distinguer les voix")
+    parser.add_argument("--speakers", type=int, default=0, help="voix attendues (son du PC / fichier), 0 = auto")
+    parser.add_argument("--speakers-mic", type=int, default=1, help="voix attendues au micro, 0 = auto")
     args = parser.parse_args(argv)
     options = TranscriptionOptions(language=None if args.language == "auto" else args.language,
-                                   profile=args.profile)
-    engine = FasterWhisperEngine(AppPaths.default().ensure().models, device=args.device)
+                                   profile=args.profile, diarize=args.diarize, speakers_main=args.speakers,
+                                   speakers_mic=args.speakers_mic)
+    models = AppPaths.default().ensure().models
+    engine = FasterWhisperEngine(models, device=args.device)
+    pipeline = TranscriptionPipeline(engine, diarizer_factory=lambda: EmbeddingDiarizer(ensure_model(models)))
     started = time.perf_counter()
     try:
-        result = TranscriptionPipeline(engine).run(_sources(args), options, on_progress=_print_progress)
+        result = pipeline.run(_sources(args), options, on_progress=_print_progress)
     except TranscriptionError as exc:
         print(f"\nERREUR : {exc}")
         return 1

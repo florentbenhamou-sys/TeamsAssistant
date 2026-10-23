@@ -137,7 +137,7 @@ Résultats détaillés et limites : [`docs/audio-diagnostic.md`](docs/audio-diag
 
 ## Phase 7 — Validation et documentation ✅
 
-- 61 tests automatisés + 2 tests matériels + 1 test modèle : tous verts au 23/10/2026. mypy strict : OK.
+- 71 tests automatisés + 2 tests matériels + 3 tests avec modèles réels : tous verts au 23/10/2026. mypy strict : OK.
 - Documentation : README, architecture, diagnostic audio, Graph, compte rendu, protocole de test.
 
 ---
@@ -156,7 +156,7 @@ Résultats détaillés et limites : [`docs/audio-diagnostic.md`](docs/audio-diag
 | Transcription locale française horodatée | ✅ Opérationnel | Échantillon synthétique (voix de synthèse) |
 | Qualité sur voix réelles / audio Teams compressé | ⏳ Non mesuré | À évaluer en réunion |
 | Reprise d'une transcription interrompue | ✅ Opérationnel | Tests automatisés |
-| Séparation des intervenants | 🟡 Partiel | Par source (micro / son du PC) uniquement ; pas de diarisation |
+| Séparation des intervenants | 🟡 Partiel | Par source + séparation des voix (TitaNet, local, sans empreinte conservée) : nombre de voix exact 4/4 sur vraies voix quand il est indiqué, attribution 7/7 sur l'échantillon synthétique ; **non testée en réunion réelle** (`docs/separation-des-voix.md`) |
 | Identification nominative | ❌ Non implémenté (volontaire) | Libellés neutres ; renommage manuel ; noms Teams si transcript officiel |
 | Compte rendu local | ✅ Opérationnel | Extraction, pas de rédaction |
 | Compte rendu IA cloud | 🟡 Non validé | Nécessite une clé API (payant) |
@@ -183,4 +183,6 @@ Résultats détaillés et limites : [`docs/audio-diagnostic.md`](docs/audio-diag
 | 23/10/2026 | D8 — Horodatage par mot activé (bornes de segments) |
 | 23/10/2026 | D9 — Générateur de compte rendu local sans IA par défaut ; Claude (`claude-opus-5-5`) optionnel avec confirmation |
 | 23/10/2026 | D10 — Graph en délégué uniquement, aucune permission application, cache DPAPI |
-| 23/10/2026 | D11 — Pas de diarisation automatique (pyannote : dépendances lourdes, jeton HF) ; séparation par source |
+| 23/10/2026 | D11 — Pas de pyannote.audio (PyTorch, jeton HF) |
+| 23/10/2026 | D12 — Séparation des voix : prises de parole + caractéristiques TitaNet (sherpa-onnx) + regroupement maison ; pipeline sherpa intégré écarté après mesure |
+| 23/10/2026 | D13 — Aucune empreinte vocale conservée ni comparée entre réunions (choix utilisateur, RGPD) |

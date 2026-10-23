@@ -9,11 +9,12 @@ from __future__ import annotations
 import math
 import threading
 from collections.abc import Callable
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from difflib import SequenceMatcher
 
 from teams_assistant.logging_setup import get_logger
 from teams_assistant.transcription.audio_prep import load_audio, mix, split_bounds
+from teams_assistant.transcription.diarization import LABEL_PREFIX, Diarizer
 from teams_assistant.transcription.types import (
     SAMPLE_RATE,
     SOURCE_LABELS,
@@ -26,9 +27,11 @@ from teams_assistant.transcription.types import (
     Segment,
     SourceKind,
     SpeechEngine,
+    TranscriptionCancelled,
     TranscriptionError,
     TranscriptionOptions,
     TranscriptResult,
+    WordStamp,
 )
 
 log = get_logger("transcription.pipeline")
@@ -39,6 +42,9 @@ LOW_LOGPROB = -1.0
 HIGH_NO_SPEECH = 0.6
 HIGH_COMPRESSION = 2.4
 ECHO_SIMILARITY = 0.6
+PAUSE_SPLIT_S = 0.4  # pause entre deux mots à partir de laquelle on coupe la prise de parole
+MERGE_GAP_S = 1.5  # regroupement a posteriori des prises de parole d'une même voix
+MERGE_MAX_S = 30.0
 
 
 @dataclass(frozen=True)
@@ -67,6 +73,49 @@ def to_segment(raw: RawSegment, chunk: Chunk) -> Segment:
                    text=raw.text, source=chunk.kind, speaker=SOURCE_LABELS[chunk.kind],
                    confidence=round(math.exp(min(raw.avg_logprob, 0.0)), 3),
                    uncertain=is_uncertain(raw), chunk_index=chunk.index)
+
+
+def split_utterances(raw: RawSegment, chunk: Chunk, fine: bool) -> list[Segment]:
+    """Segments finaux. En mode séparation des voix, un segment Whisper est coupé en prises de
+    parole aux pauses et aux fins de phrase : un changement de voix y survient presque toujours."""
+    base = to_segment(raw, chunk)
+    if not fine or not raw.words:
+        return [base]
+    groups: list[list[WordStamp]] = [[]]
+    for word in raw.words:
+        previous = groups[-1][-1] if groups[-1] else None
+        if previous and (word.start_s - previous.end_s >= PAUSE_SPLIT_S or previous.text.rstrip()[-1:] in ".?!"):
+            groups.append([])
+        groups[-1].append(word)
+    offset = chunk.start_s
+    return [replace(base, start_s=round(offset + g[0].start_s, 2), end_s=round(offset + g[-1].end_s, 2),
+                    text="".join(w.text for w in g).strip()) for g in groups if "".join(w.text for w in g).strip()]
+
+
+def merge_same_speaker(segments: list[Segment], max_gap_s: float = MERGE_GAP_S,
+                       max_length_s: float = MERGE_MAX_S) -> list[Segment]:
+    """Après attribution des voix, regroupe les prises de parole consécutives d'une même voix
+    (lisibilité) ; une autre voix ou une longue pause entre les deux empêche le regroupement."""
+    merged: list[Segment] = []
+    for seg in segments:
+        last = merged[-1] if merged else None
+        if (last and last.source is seg.source and last.speaker == seg.speaker
+                and seg.start_s - last.end_s <= max_gap_s and seg.end_s - last.start_s <= max_length_s):
+            merged[-1] = replace(last, end_s=seg.end_s, text=f"{last.text} {seg.text}",
+                                 confidence=min(last.confidence, seg.confidence),
+                                 uncertain=last.uncertain or seg.uncertain)
+        else:
+            merged.append(seg)
+    return merged
+
+
+def expected_speakers(kind: SourceKind, options: TranscriptionOptions) -> int:
+    """Nombre de voix attendu sur une piste (0 = estimation automatique)."""
+    if kind is SourceKind.MICROPHONE:
+        return options.speakers_mic
+    if kind is SourceKind.MIXED and options.speakers_main and options.speakers_mic:
+        return options.speakers_main + options.speakers_mic  # piste mixée : toutes les voix
+    return 0 if kind is SourceKind.MIXED else options.speakers_main
 
 
 def _overlap(a: Segment, b: Segment) -> float:
@@ -106,6 +155,7 @@ class _RunState:
     language: DetectedLanguage
     on_progress: ProgressCallback | None
     cancel: threading.Event
+    warnings: list[str] = field(default_factory=list)
 
     def done_seconds(self) -> float:
         return sum(c.duration_s for c in self.chunks if c.index in self.done)
@@ -116,9 +166,11 @@ class _RunState:
 
 
 class TranscriptionPipeline:
-    def __init__(self, engine: SpeechEngine, chunk_target_s: float = 300.0) -> None:
+    def __init__(self, engine: SpeechEngine, chunk_target_s: float = 300.0,
+                 diarizer_factory: Callable[[], Diarizer] | None = None) -> None:
         self.engine = engine
         self.chunk_target_s = chunk_target_s
+        self.diarizer_factory = diarizer_factory  # chargé seulement si la séparation est demandée
 
     def prepare(self, sources: list[AudioSource], options: TranscriptionOptions
                 ) -> tuple[dict[SourceKind, Samples], list[Chunk]]:
@@ -160,18 +212,55 @@ class TranscriptionPipeline:
         if not state.language.code:
             state.language = detected
         base = state.done_seconds()
+        fine = options.diarize and expected_speakers(chunk.kind, options) != 1
         segments: list[Segment] = []
         for raw in raws:
-            segments.append(to_segment(raw, chunk))
+            segments.extend(split_utterances(raw, chunk, fine))
             state.report(base + raw.end_s, chunk)
         state.report(base + chunk.duration_s, chunk)
         return segments
+
+    def _diarize(self, segments: list[Segment], tracks: dict[SourceKind, Samples],
+                 options: TranscriptionOptions, state: _RunState) -> list[Segment]:
+        """Séparation des voix piste par piste, sur toute la piste (numérotation cohérente,
+        y compris après une reprise). Renvoie les segments avec leur libellé de voix."""
+        if not options.diarize:
+            return segments
+        if self.diarizer_factory is None:
+            state.warnings.append("Séparation des voix indisponible dans cette configuration.")
+            return segments
+        diarizer: Diarizer | None = None
+        labels: dict[int, str] = {}
+        for kind, samples in tracks.items():
+            expected = expected_speakers(kind, options)
+            members = [i for i, s in enumerate(segments) if s.source is kind]
+            if expected == 1 or not members:
+                continue  # une seule voix attendue : libellé de la source conservé
+            diarizer = diarizer or self.diarizer_factory()
+            numbers = diarizer.assign(samples, [(segments[i].start_s, segments[i].end_s) for i in members],
+                                      expected, self._diarization_progress(state, kind))
+            labels.update({i: f"{LABEL_PREFIX[kind]} {n}" for i, n in zip(members, numbers)})
+            state.warnings.append(f"{len(set(numbers))} voix distinguée(s) sur « {SOURCE_LABELS[kind]} » "
+                                  "(séparation automatique, à vérifier avant de renommer).")
+        labeled = [replace(s, speaker=labels[i]) if i in labels else s for i, s in enumerate(segments)]
+        return merge_same_speaker(labeled) if labels else labeled
+
+    @staticmethod
+    def _diarization_progress(state: _RunState, kind: SourceKind) -> Callable[[float], None]:
+        def report(ratio: float) -> None:
+            if state.cancel.is_set():
+                raise TranscriptionCancelled("Transcription interrompue par l'utilisateur.")
+            if state.on_progress:
+                state.on_progress(Progress(state.done_seconds(), state.total_s, 0, len(state.chunks),
+                                           f"Séparation des voix ({SOURCE_LABELS[kind]}) : {ratio:.0%}"))
+        return report
 
     def _assemble(self, state: _RunState, tracks: dict[SourceKind, Samples],
                   options: TranscriptionOptions) -> TranscriptResult:
         segments = sorted((s for segs in state.done.values() for s in segs),
                           key=lambda s: (s.start_s, s.source))
-        warnings: list[str] = []
+        segments = self._diarize(segments, tracks, options, state)
+        warnings: list[str] = list(state.warnings)
         if SourceKind.MICROPHONE in tracks and SourceKind.SYSTEM in tracks:
             segments, removed = remove_echo(segments)
             if removed:

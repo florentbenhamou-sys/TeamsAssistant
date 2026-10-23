@@ -1,4 +1,4 @@
-﻿"""Parcours complet de l'interface hors écran (QT_QPA_PLATFORM=offscreen), sans matériel réel.
+"""Parcours complet de l'interface hors écran (QT_QPA_PLATFORM=offscreen), sans matériel réel.
 
 Le backend audio et le moteur sont des doublures de test : ce test vérifie le câblage des écrans,
 pas la capture réelle (voir test_hardware_audio.py).
@@ -16,7 +16,7 @@ QtWidgets = pytest.importorskip("PySide6.QtWidgets")
 
 from PySide6.QtCore import QThreadPool  # noqa: E402
 
-from fakes import FakeBackend, FakeSpeechEngine, sine_block  # noqa: E402
+from fakes import FakeBackend, FakeDiarizer, FakeSpeechEngine, sine_block  # noqa: E402
 from teams_assistant.app_context import build_context  # noqa: E402
 from teams_assistant.audio.types import DeviceKind  # noqa: E402
 from teams_assistant.config import AppPaths  # noqa: E402
@@ -30,7 +30,7 @@ from teams_assistant.ui.main_window import MainWindow  # noqa: E402
 def window(app_paths: AppPaths, monkeypatch: pytest.MonkeyPatch) -> Iterator[MainWindow]:
     app = QtWidgets.QApplication.instance() or QtWidgets.QApplication([])
     backend = FakeBackend()
-    ctx = build_context(app_paths, engine=FakeSpeechEngine())
+    ctx = build_context(app_paths, engine=FakeSpeechEngine(), diarizer_factory=FakeDiarizer)
     for module in ("history", "summary", "settings"):
         monkeypatch.setattr(f"teams_assistant.ui.pages.{module}.confirm", lambda *a, **k: True)
     monkeypatch.setattr("teams_assistant.ui.pages.settings.get_secret", lambda name: None)
@@ -47,7 +47,7 @@ def _wait() -> None:
     QtWidgets.QApplication.processEvents()
 
 
-def test_full_flow_capture_transcribe_summarize_delete(window: MainWindow) -> None:
+def test_full_flow_capture_transcribe_summarize_delete(window: MainWindow, monkeypatch: pytest.MonkeyPatch) -> None:
     new = window.pages["new"]
     window.go("new")
     assert not new.start_btn.isEnabled()  # pas de capture sans confirmation des autorisations
@@ -71,7 +71,14 @@ def test_full_flow_capture_transcribe_summarize_delete(window: MainWindow) -> No
     transcript_page = window.pages["transcript"]
     transcript_page.run_btn.click()
     _wait()
-    assert transcript_page.table.rowCount() == 3
+    # Séparation des voix active par défaut : la doublure produit 2 voix, passages regroupés par voix
+    assert transcript_page.table.rowCount() == 2
+    assert transcript_page.speaker_combo.count() == 2
+    transcript_page.speaker_combo.setCurrentIndex(1)
+    monkeypatch.setattr("teams_assistant.ui.pages.transcript.QInputDialog.getText",
+                        lambda *a, **k: ("Alice (cliente)", True))
+    transcript_page.rename_speaker()
+    assert transcript_page.table.item(1, 3).text() == "Alice (cliente)"
     transcript_page.table.item(0, 4).setText("Texte corrigé à la main")
     first = window.controller.ctx.transcription.segments(
         window.controller.ctx.transcription.latest(session_id).id)[0]  # type: ignore[union-attr]

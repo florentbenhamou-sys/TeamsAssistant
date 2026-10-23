@@ -68,6 +68,18 @@ Pré-requis : [`microsoft-graph.md`](microsoft-graph.md) étapes 1–3, consente
 4. Attendu : tout fonctionne hors connexion. (✅ vérifié sur l'échantillon synthétique avec le
    modèle déjà téléchargé ; non vérifié en mode avion.)
 
+## 9. Séparation des voix
+
+1. Réunion (ou enregistrement autorisé) avec 3 personnes ou plus, dont 2 dans la même pièce autour du
+   micro de votre PC.
+2. Transcription : cocher « Distinguer les voix », indiquer le nombre de voix sur le son du PC et au
+   micro, Transcrire.
+3. Pour chaque intervenant de la liste, vérifier que ses passages surlignés appartiennent bien à la
+   même personne ; noter le pourcentage de passages mal attribués.
+4. Recommencer en « auto » et noter le nombre de voix trouvé.
+5. Renommer chaque intervenant ; fusionner deux libellés en leur donnant le même nom.
+6. Vérifier que le compte rendu reprend les noms donnés.
+
 ## 8. Historique, exports, suppression
 
 1. Historique : recherche d'un mot présent dans une transcription → la session apparaît.

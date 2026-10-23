@@ -1,0 +1,58 @@
+[
+  {
+    "source": "microphone",
+    "voice": "Microsoft Hortense Desktop",
+    "text": "Bonjour, on fait un point rapide sur le déploiement du nouvel outil.",
+    "start_s": 0.8,
+    "end_s": 5.38
+  },
+  {
+    "source": "microphone",
+    "voice": "Microsoft Zira Desktop",
+    "text": "Oui, la formation des équipes commence lundi prochain.",
+    "start_s": 6.18,
+    "end_s": 11.11
+  },
+  {
+    "source": "microphone",
+    "voice": "Microsoft Hortense Desktop",
+    "text": "Très bien. Est-ce que le support est prêt pour les premières questions ?",
+    "start_s": 11.91,
+    "end_s": 17.0
+  },
+  {
+    "source": "microphone",
+    "voice": "Microsoft Zira Desktop",
+    "text": "Presque, il manque encore la documentation sur les exports.",
+    "start_s": 17.8,
+    "end_s": 22.84
+  },
+  {
+    "source": "microphone",
+    "voice": "Microsoft Hortense Desktop",
+    "text": "Je m'en occupe cette semaine et je vous la transmets vendredi.",
+    "start_s": 23.64,
+    "end_s": 27.55
+  },
+  {
+    "source": "microphone",
+    "voice": "Microsoft Zira Desktop",
+    "text": "Parfait, merci. Je préviens les responsables de site.",
+    "start_s": 28.34,
+    "end_s": 34.05
+  },
+  {
+    "source": "microphone",
+    "voice": "Microsoft Hortense Desktop",
+    "text": "Dernier point, le budget de la phase deux reste à valider.",
+    "start_s": 34.85,
+    "end_s": 39.08
+  },
+  {
+    "source": "microphone",
+    "voice": "Microsoft Zira Desktop",
+    "text": "D'accord, nous en reparlerons au comité du mois prochain.",
+    "start_s": 39.88,
+    "end_s": 45.27
+  }
+]

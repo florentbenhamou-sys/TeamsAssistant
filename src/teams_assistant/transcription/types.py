@@ -49,6 +49,13 @@ class AudioSource:
 
 
 @dataclass(frozen=True)
+class WordStamp:
+    start_s: float
+    end_s: float
+    text: str  # inclut l'espace initial renvoyé par Whisper
+
+
+@dataclass(frozen=True)
 class RawSegment:
     """Segment brut renvoyé par un moteur, horodaté relativement au tronçon traité."""
 
@@ -58,6 +65,7 @@ class RawSegment:
     avg_logprob: float = 0.0
     no_speech_prob: float = 0.0
     compression_ratio: float = 1.0
+    words: tuple[WordStamp, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -80,6 +88,9 @@ class TranscriptionOptions:
     profile: str = "rapide"
     vad: bool = True
     separate_sources: bool = True  # False = mixage micro + système avant transcription
+    diarize: bool = False  # distinguer les voix au sein de chaque piste
+    speakers_main: int = 0  # voix attendues sur le son du PC / fichier importé (0 = estimation)
+    speakers_mic: int = 1  # voix attendues au micro (1 = vous seul : pas de séparation)
 
 
 @dataclass(frozen=True)

@@ -15,7 +15,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-transcription = ["faster-whisper>=1.1"]
+transcription = ["faster-whisper>=1.1", "sherpa-onnx>=1.12"]
 ui = ["PySide6-Essentials>=6.8"]
 m365 = ["msal>=1.31", "msal-extensions>=1.2", "requests>=2.32", "keyring>=25"]
 export = ["python-docx>=1.1"]

@@ -9,6 +9,7 @@ from typing import Any
 
 from PySide6.QtCore import Qt
 from PySide6.QtWidgets import (
+    QCheckBox,
     QComboBox,
     QFileDialog,
     QHBoxLayout,
@@ -16,6 +17,7 @@ from PySide6.QtWidgets import (
     QLabel,
     QLineEdit,
     QProgressBar,
+    QSpinBox,
     QTableWidget,
     QTableWidgetItem,
     QTableWidgetSelectionRange,
@@ -54,6 +56,10 @@ class TranscriptPage(QWidget):
         self.import_official_btn = button("Importer le transcript officiel")
         self.official_label = muted("")
         self.search = QLineEdit()
+        self.diarize = QCheckBox("Distinguer les voix")
+        self.speakers_main = count_spin(0)
+        self.speakers_mic = count_spin(1)
+        self.speaker_combo = QComboBox()
         self.table = QTableWidget(0, len(COLUMNS))
         self.segments: list[TranscriptSegment] = []
         self.cancel_event = threading.Event()
@@ -84,6 +90,7 @@ class TranscriptPage(QWidget):
         layout.addWidget(self.header)
         layout.addWidget(self.info)
         layout.addLayout(self._run_bar())
+        layout.addLayout(self._voices_bar())
         layout.addWidget(self.progress)
         layout.addLayout(self._official_bar())
         layout.addWidget(self.search)
@@ -96,6 +103,18 @@ class TranscriptPage(QWidget):
             bar.addWidget(widget)
         return bar
 
+    def _voices_bar(self) -> QHBoxLayout:
+        bar = QHBoxLayout()
+        self.diarize.setToolTip("Regroupe les passages par voix (Intervenant 1, 2…). Aucune empreinte "
+                                "vocale n'est conservée ; les numéros ne valent que pour cette réunion.")
+        self.diarize.toggled.connect(self.speakers_main.setEnabled)
+        self.diarize.toggled.connect(self.speakers_mic.setEnabled)
+        for widget in (self.diarize, QLabel("Voix sur le son du PC / fichier"), self.speakers_main,
+                       QLabel("Voix au micro"), self.speakers_mic):
+            bar.addWidget(widget)
+        bar.addStretch()
+        return bar
+
     def _official_bar(self) -> QHBoxLayout:
         bar = QHBoxLayout()
         bar.addWidget(self.official_btn)
@@ -105,9 +124,13 @@ class TranscriptPage(QWidget):
 
     def _export_bar(self) -> QHBoxLayout:
         bar = QHBoxLayout()
-        speaker_btn = button("Renommer l'intervenant sélectionné…")
+        speaker_btn = button("Renommer…")
         speaker_btn.clicked.connect(self.rename_speaker)
+        self.speaker_combo.currentIndexChanged.connect(self._select_speaker_rows)
+        bar.addWidget(QLabel("Intervenant"))
+        bar.addWidget(self.speaker_combo)
         bar.addWidget(speaker_btn)
+        bar.addStretch()
         for fmt in ("txt", "md", "json"):
             btn = button(f"Exporter {fmt.upper()}")
             btn.clicked.connect(lambda _=False, f=fmt: self.export(f))
@@ -122,6 +145,11 @@ class TranscriptPage(QWidget):
         settings = self.controller.ctx.settings.load()
         self.profile.setCurrentIndex(max(0, self.profile.findData(settings.transcription_profile)))
         self.language.setCurrentIndex(max(0, self.language.findData(settings.language)))
+        self.diarize.setChecked(settings.diarize_speakers)
+        self.speakers_main.setValue(settings.speakers_main)
+        self.speakers_mic.setValue(settings.speakers_mic)
+        self.speakers_main.setEnabled(settings.diarize_speakers)
+        self.speakers_mic.setEnabled(settings.diarize_speakers)
         self.progress.setValue(0)
         self.cancel_btn.setEnabled(False)
         self.official_check = None
@@ -170,7 +198,30 @@ class TranscriptPage(QWidget):
                 self.table.setItem(row, col, item)
         self.table.resizeRowsToContents()
         self._loading = False
+        self._fill_speakers(segments)
         self.apply_filter()
+
+    def _fill_speakers(self, segments: list[TranscriptSegment]) -> None:
+        """Liste des intervenants avec nombre de passages et première prise de parole."""
+        first: dict[str, float] = {}
+        counts: dict[str, int] = {}
+        for seg in segments:
+            label = seg.speaker or ""
+            first.setdefault(label, seg.start_s)
+            counts[label] = counts.get(label, 0) + 1
+        self.speaker_combo.blockSignals(True)
+        self.speaker_combo.clear()
+        for label in sorted(first, key=lambda name: first[name]):
+            self.speaker_combo.addItem(f"{label or '(sans libellé)'} — {counts[label]} passage(s), "
+                                       f"dès {format_hms(first[label])}", label)
+        self.speaker_combo.setPlaceholderText("Choisir un intervenant…")
+        self.speaker_combo.setCurrentIndex(-1)
+        self.speaker_combo.blockSignals(False)
+
+    def _select_speaker_rows(self) -> None:
+        """Sélectionne tous les passages de l'intervenant choisi pour faciliter l'identification."""
+        label = self.speaker_combo.currentData()
+        self.highlight([s.seq for s in self.segments if (s.speaker or "") == label])
 
     def _cell_changed(self, row: int, column: int) -> None:
         if self._loading or column != TEXT_COLUMN:
@@ -200,7 +251,9 @@ class TranscriptPage(QWidget):
         settings = self.controller.ctx.settings.load()
         language = self.language.currentData()
         return TranscriptionOptions(language=None if language == "auto" else language,
-                                    profile=self.profile.currentData(), separate_sources=settings.separate_sources)
+                                    profile=self.profile.currentData(), separate_sources=settings.separate_sources,
+                                    diarize=self.diarize.isChecked(), speakers_main=self.speakers_main.value(),
+                                    speakers_mic=self.speakers_mic.value())
 
     def start_transcription(self) -> None:
         session_id = self.controller.current_session_id
@@ -222,7 +275,8 @@ class TranscriptPage(QWidget):
 
     def _progress(self, progress: Progress) -> None:
         self.progress.setValue(int(progress.ratio * 100))
-        self.progress.setFormat(f"%p % — tronçon {progress.chunk_index + 1}/{progress.chunk_count}")
+        step = progress.message or f"tronçon {progress.chunk_index + 1}/{progress.chunk_count}"
+        self.progress.setFormat(f"%p % — {step}")
 
     def _done(self, _result: Any) -> None:
         self.cancel_btn.setEnabled(False)
@@ -261,13 +315,15 @@ class TranscriptPage(QWidget):
 
     # --- actions ---------------------------------------------------------------------------
     def rename_speaker(self) -> None:
-        row = self.table.currentRow()
         transcript = self.controller.ctx.transcription.latest(self.controller.current_session_id or "")
-        if row < 0 or transcript is None:
+        old = self.speaker_combo.currentData()
+        if old is None and self.table.currentRow() >= 0:
+            old = self.segments[self.table.currentRow()].speaker or ""
+        if transcript is None or old is None:
             return
-        old = self.segments[row].speaker or ""
-        new, ok = QInputDialog.getText(self, "Renommer", f"Nouveau libellé pour « {old} » "
-                                       "(uniquement si vous connaissez l'identité) :", text=old)
+        new, ok = QInputDialog.getText(
+            self, "Renommer", f"Nom pour « {old} » (uniquement si vous l'avez reconnu).\n"
+            "Donner le même nom à deux intervenants les fusionne.", text=old)
         if ok and new.strip():
             self.controller.ctx.transcription.rename_speaker(transcript.id, old, new)
             self.load()
@@ -288,3 +344,12 @@ class TranscriptPage(QWidget):
                 "md": lambda: exports.transcript_md(session, transcript, segments),
                 "json": lambda: exports.transcript_json(session, transcript, segments)}[fmt]()
         exports.write_text(Path(path), text)
+
+
+def count_spin(default: int) -> QSpinBox:
+    spin = QSpinBox()
+    spin.setRange(0, 20)
+    spin.setValue(default)
+    spin.setSpecialValueText("auto")  # 0 = estimation automatique
+    spin.setToolTip("Indiquer le nombre de personnes améliore nettement la séparation. 1 = pas de séparation.")
+    return spin

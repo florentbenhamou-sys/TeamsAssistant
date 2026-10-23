@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 
 from teams_assistant.config import AppPaths
@@ -17,6 +18,7 @@ from teams_assistant.storage.repositories import (
     SummaryRepository,
     TranscriptRepository,
 )
+from teams_assistant.transcription.diarization import Diarizer, EmbeddingDiarizer, ensure_model
 from teams_assistant.transcription.pipeline import TranscriptionPipeline
 from teams_assistant.transcription.types import SpeechEngine
 
@@ -34,7 +36,8 @@ class AppContext:
         self.db.conn.close()
 
 
-def build_context(paths: AppPaths, engine: SpeechEngine | None = None) -> AppContext:
+def build_context(paths: AppPaths, engine: SpeechEngine | None = None,
+                  diarizer_factory: Callable[[], Diarizer] | None = None) -> AppContext:
     paths.ensure()
     db = Database(connect(paths.db_file))
     settings = SettingsService(SettingsRepository(db))
@@ -43,6 +46,8 @@ def build_context(paths: AppPaths, engine: SpeechEngine | None = None) -> AppCon
         from teams_assistant.transcription.whisper_engine import FasterWhisperEngine
         engine = FasterWhisperEngine(paths.models, device=settings.load().compute_device)
     transcripts = TranscriptRepository(db)
-    transcription = TranscriptionService(transcripts, sessions, TranscriptionPipeline(engine))
+    factory = diarizer_factory or (lambda: EmbeddingDiarizer(ensure_model(paths.models)))
+    pipeline = TranscriptionPipeline(engine, diarizer_factory=factory)
+    transcription = TranscriptionService(transcripts, sessions, pipeline)
     summaries = SummaryService(SummaryRepository(db), transcripts, sessions)
     return AppContext(paths, db, settings, sessions, transcription, summaries)
