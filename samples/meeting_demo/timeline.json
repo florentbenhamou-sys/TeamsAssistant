@@ -1,0 +1,68 @@
+[
+  {
+    "source": "microphone",
+    "text": "Bonjour à tous, merci d'être présents pour cette réunion de cadrage du projet Atlas.",
+    "start_s": 0.8,
+    "end_s": 6.92
+  },
+  {
+    "source": "system",
+    "text": "Bonjour. Pour Nordia Logistique, l'objectif est de remplacer notre outil de planification des tournées avant la fin de l'année.",
+    "start_s": 7.72,
+    "end_s": 16.83
+  },
+  {
+    "source": "microphone",
+    "text": "Très bien. Pouvez-vous rappeler le nombre d'utilisateurs concernés ?",
+    "start_s": 17.63,
+    "end_s": 23.0
+  },
+  {
+    "source": "system",
+    "text": "Environ cent vingt planificateurs, répartis sur quatre sites.",
+    "start_s": 23.8,
+    "end_s": 28.54
+  },
+  {
+    "source": "system",
+    "text": "Notre principale inquiétude concerne la reprise des données historiques, qui sont dans un format ancien.",
+    "start_s": 29.34,
+    "end_s": 36.1
+  },
+  {
+    "source": "microphone",
+    "text": "C'est un risque que nous avons identifié. Nous proposons un atelier dédié à la reprise des données.",
+    "start_s": 36.91,
+    "end_s": 44.09
+  },
+  {
+    "source": "system",
+    "text": "D'accord. Nous validons le principe d'un pilote sur le site de Lyon.",
+    "start_s": 44.9,
+    "end_s": 50.44
+  },
+  {
+    "source": "microphone",
+    "text": "Parfait. Je vous envoie la proposition commerciale d'ici vendredi prochain.",
+    "start_s": 51.23,
+    "end_s": 57.35
+  },
+  {
+    "source": "system",
+    "text": "De notre côté, nous vous transmettrons un extrait anonymisé des données avant le quinze novembre.",
+    "start_s": 58.16,
+    "end_s": 64.5
+  },
+  {
+    "source": "system",
+    "text": "Il reste une question ouverte sur l'hébergement : cloud public ou serveur interne. Nous n'avons pas encore tranché.",
+    "start_s": 65.31,
+    "end_s": 73.75
+  },
+  {
+    "source": "microphone",
+    "text": "Entendu, nous préparerons une comparaison des deux options. Merci à tous, bonne journée.",
+    "start_s": 74.56,
+    "end_s": 81.68
+  }
+]

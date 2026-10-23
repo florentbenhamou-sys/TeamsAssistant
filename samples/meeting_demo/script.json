@@ -1,0 +1,17 @@
+{
+  "title": "Réunion de cadrage — projet Atlas (données fictives)",
+  "note": "Dialogue entièrement synthétique. Sociétés et personnes inventées. Voix de synthèse Windows (Hortense).",
+  "lines": [
+    {"source": "microphone", "text": "Bonjour à tous, merci d'être présents pour cette réunion de cadrage du projet Atlas."},
+    {"source": "system", "text": "Bonjour. Pour Nordia Logistique, l'objectif est de remplacer notre outil de planification des tournées avant la fin de l'année."},
+    {"source": "microphone", "text": "Très bien. Pouvez-vous rappeler le nombre d'utilisateurs concernés ?"},
+    {"source": "system", "text": "Environ cent vingt planificateurs, répartis sur quatre sites."},
+    {"source": "system", "text": "Notre principale inquiétude concerne la reprise des données historiques, qui sont dans un format ancien."},
+    {"source": "microphone", "text": "C'est un risque que nous avons identifié. Nous proposons un atelier dédié à la reprise des données."},
+    {"source": "system", "text": "D'accord. Nous validons le principe d'un pilote sur le site de Lyon."},
+    {"source": "microphone", "text": "Parfait. Je vous envoie la proposition commerciale d'ici vendredi prochain."},
+    {"source": "system", "text": "De notre côté, nous vous transmettrons un extrait anonymisé des données avant le quinze novembre."},
+    {"source": "system", "text": "Il reste une question ouverte sur l'hébergement : cloud public ou serveur interne. Nous n'avons pas encore tranché."},
+    {"source": "microphone", "text": "Entendu, nous préparerons une comparaison des deux options. Merci à tous, bonne journée."}
+  ]
+}

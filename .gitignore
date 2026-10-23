@@ -1,0 +1,47 @@
+# Environnements Python
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Secrets — ne JAMAIS committer
+.env
+.env.*
+!.env.example
+*.pem
+*.pfx
+*.key
+*.p12
+secrets/
+msal_token_cache*
+
+# Données locales (enregistrements, base, exports) — confidentiel
+data/
+recordings/
+exports/
+logs/
+*.db
+*.db-journal
+*.sqlite
+*.wav
+*.flac
+*.mp3
+*.m4a
+!samples/**/*.wav
+
+# Modèles téléchargés
+models/
+
+# Éditeurs / OS
+.vscode/
+.idea/
+Thumbs.db
+Desktop.ini

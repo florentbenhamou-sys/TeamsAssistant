@@ -1,0 +1,45 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "teams-assistant"
+version = "0.1.0"
+description = "Assistant local de transcription et de compte rendu de réunions Teams (prototype)"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "numpy>=2.0",
+    "PyAudioWPatch>=0.2.12; sys_platform == 'win32'",
+    "soundcard>=0.4.3",
+]
+
+[project.optional-dependencies]
+transcription = ["faster-whisper>=1.1"]
+ui = ["PySide6-Essentials>=6.8"]
+m365 = ["msal>=1.31", "msal-extensions>=1.2", "requests>=2.32", "keyring>=25"]
+export = ["python-docx>=1.1"]
+cloud = ["anthropic>=2.0"]
+dev = ["pytest>=8", "mypy>=1.13"]
+all = ["teams-assistant[transcription,ui,m365,export,cloud,dev]"]
+
+[project.scripts]
+teams-assistant = "teams_assistant.__main__:main"
+teams-audio-diag = "teams_assistant.audio.diagnostic:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q -m \"not hardware and not model\""
+markers = [
+    "hardware: nécessite des périphériques audio réels (exclu par défaut)",
+    "model: nécessite le téléchargement d'un modèle Whisper",
+]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+ignore_missing_imports = true
+mypy_path = "src"
